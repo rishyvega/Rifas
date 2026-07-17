@@ -1,30 +1,42 @@
-from datetime import datetime, timedelta
-
-# Liberar boletos apartados hace más de 1 hora
-limit_time = datetime.now() - timedelta(hours=1)
-supabase.table("tickets").update({"status": "disponible", "apartado_at": None})\
-    .eq("status", "apartado").lt("apartado_at", limit_time.isoformat()).execute()
-
-import os
 import streamlit as st
 from supabase import create_client
+from datetime import datetime, timedelta
 
-# Configuración segura: Streamlit buscará esto en sus "Secrets"
+# 1. Configuración de conexión (usando los Secrets de Streamlit)
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
+# 2. Función para liberar boletos expirados
+def liberar_boletos_expirados():
+    limit_time = datetime.now() - timedelta(hours=1)
+    supabase.table("tickets").update({"status": "disponible", "apartado_at": None})\
+        .eq("status", "apartado")\
+        .lt("apartado_at", limit_time.isoformat())\
+        .execute()
+
+# 3. Lógica principal de la interfaz
 st.title("Rifa JR - Selección de Boletos")
+
+# Ejecutar limpieza antes de mostrar los datos
+liberar_boletos_expirados()
 
 # Obtener boletos de la base de datos
 response = supabase.table("tickets").select("*").order("id").execute()
 tickets = response.data
 
 # Mostrar boletos en una cuadrícula
-cols = st.columns(10) # 10 columnas para ver los números
+cols = st.columns(10)
 for i, ticket in enumerate(tickets):
-    color = "green" if ticket['status'] == 'disponible' else "red"
-    if cols[i % 10].button(f"{ticket['id']}", key=ticket['id'], disabled=(ticket['status'] != 'disponible')):
-        # Lógica de apartado
-        supabase.table("tickets").update({"status": "apartado"}).eq("id", ticket['id']).execute()
-        st.experimental_rerun()
+    # Definir color del botón
+    if ticket['status'] == 'disponible':
+        color = "green"
+        if cols[i % 10].button(f"{ticket['id']}", key=f"btn_{ticket['id']}"):
+            # Lógica de apartado
+            supabase.table("tickets").update({
+                "status": "apartado", 
+                "apartado_at": datetime.now().isoformat()
+            }).eq("id", ticket['id']).execute()
+            st.rerun() # Reemplaza a experimental_rerun en versiones recientes
+    else:
+        cols[i % 10].button(f"{ticket['id']}", key=f"btn_{ticket['id']}", disabled=True)
