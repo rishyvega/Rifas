@@ -8,12 +8,8 @@ key = st.secrets["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
 # 2. Función para liberar boletos expirados
-def liberar_boletos_expirados():
-    limit_time = datetime.now() - timedelta(hours=1)
-    supabase.table("tickets").update({"status": "disponible", "apartado_at": None})\
-        .eq("status", "apartado")\
-        .lt("apartado_at", limit_time.isoformat())\
-        .execute()
+#def liberar_boletos_expirados():
+  #
 
 # 3. Lógica principal de la interfaz
 st.title("Rifa JR - Selección de Boletos")
